@@ -16,16 +16,20 @@ Specification:
 */
 #define REFERENCE_STRING_MAX 800
 #define REFERENCE_STRING_MIN 1
-#define REFERENCE_STRING_RANGE 25 //
+#define REFERENCE_RANGE_MAX 25 //
+#define REFERENCE_RANGE_MIN 15
 #define NUMBER_OF_MEMORY_REFERENCE 200000 //how many number we need
-#define NUMBER_OF_BLOCK 2000 //how many number in a block
+
+
+
+#define NUMBER_OF_BLOCKS 100 //how many block in reference
 
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include<algorithm>
 using namespace std;
-
+enum {random_String,locality_String,my_String};
 class my_Reference_Data {
 private:
     short my_Reference_String[NUMBER_OF_MEMORY_REFERENCE];
@@ -38,48 +42,82 @@ public:
     int get_Reference_String(int get_num) {
         return my_Reference_String[get_num];
     }
-    //  (1) Random: Arbitrarily pick [random_Block_Number_MIN, random_Block_Number_MAX] continuous numbers for each reference. 
-    // min = random_num - range/2 ,max = random_num + range/2
-    // if random_min - range < REFERENCE_STRING_MIN , min = REFERENCE_STRING_MIN ,max = random_min + range
-    // else random_max +range >  REFERENCE_STRING_MAX , min = random_max - range ,max = REFERENCE_STRING_MAX
-    void set_Reference_String() {
-        for (int number_Blocks = 0; number_Blocks < (NUMBER_OF_MEMORY_REFERENCE / NUMBER_OF_BLOCK); number_Blocks++) {
-            short random_Block_Number = (short)(rand() % REFERENCE_STRING_MAX + REFERENCE_STRING_MIN);
-            short random_Block_Number_Middle = REFERENCE_STRING_RANGE / 2;
-            short random_Block_Number_MIN = random_Block_Number - random_Block_Number_Middle;
-            short random_Block_Number_MAX = random_Block_Number + random_Block_Number_Middle;
+    void print_Refernece_String(int get_num) {
+        cout << setw(3) << setfill(' ') << get_Reference_String(get_num) << " ";
 
-            if (random_Block_Number_MAX > REFERENCE_STRING_MAX) {
-                random_Block_Number_MIN = random_Block_Number_MIN - (random_Block_Number_MAX - REFERENCE_STRING_MAX);
-                random_Block_Number_MAX = REFERENCE_STRING_MAX;
+    }
+    void set_Reference_String(short mode) {
+        //  (1) Random: Arbitrarily pick [1,25] continuous numbers for each reference. 
+        if (mode == random_String) { 
+            int reference_Count = 0;
+            while (reference_Count < NUMBER_OF_MEMORY_REFERENCE) {
+                short block_Length = (short)rand() % REFERENCE_RANGE_MAX + 1;
+                short number_Start = (short)(rand() % REFERENCE_STRING_MAX) + REFERENCE_STRING_MIN;
+                if (NUMBER_OF_MEMORY_REFERENCE - reference_Count < block_Length) 
+                    block_Length = NUMBER_OF_MEMORY_REFERENCE - reference_Count;
+                
+                for ( int i = 0; i < block_Length ; i++ ) {                    
+                    my_Reference_String[reference_Count] = number_Start;
+                    (number_Start + 1 > REFERENCE_STRING_MAX) ? number_Start = REFERENCE_STRING_MIN : number_Start++;
+                    //cout << setw(3) << setfill(' ') << my_Reference_String[reference_Count] << " ";
+                    reference_Count++; 
+                }
+                //cout << "\r\n";
+                //--------------------------------
+
+               
+                //--------------------------------
             }
-            else if (random_Block_Number_MIN < REFERENCE_STRING_MIN) {
-                random_Block_Number_MIN = REFERENCE_STRING_MIN;
-                random_Block_Number_MAX = random_Block_Number_MAX + (-(random_Block_Number_MIN - REFERENCE_STRING_MIN));
-            }
-            for (int in_Block_Number = number_Blocks * NUMBER_OF_BLOCK; in_Block_Number < (number_Blocks+1) * NUMBER_OF_BLOCK ; in_Block_Number++) {
-                my_Reference_String[in_Block_Number] = ((short)(random_Block_Number_MIN + rand() %( random_Block_Number_MAX- (random_Block_Number_MIN- 1))));
-            }
-            
+
         }
+        //  (2) Locality: Simulate function calls.Each function call may refer a subset of 1 / 25~1 / 15 string(the length of string can be random).
+        else if (mode == locality_String) {
+            int number_In_Block = NUMBER_OF_MEMORY_REFERENCE / NUMBER_OF_BLOCKS;
+            for ( int block_Count = 0 ; block_Count < NUMBER_OF_BLOCKS; block_Count++ ) {
+                short number_Fraction = (short)(rand() % REFERENCE_RANGE_MIN + 1) + (REFERENCE_RANGE_MAX - REFERENCE_RANGE_MIN);
+                short random_Number_Start = (short)(rand() % REFERENCE_STRING_MAX) + REFERENCE_STRING_MIN;
+                short random_Number_Range = REFERENCE_STRING_MAX / number_Fraction;
+
+                for (int number_Count = block_Count * number_In_Block; number_Count < (block_Count+1) * number_In_Block; number_Count++) {
+                    short random_Number_Temp = random_Number_Start + (short)(rand() % random_Number_Range);
+                    if (random_Number_Temp > REFERENCE_STRING_MAX) {
+                        random_Number_Temp = REFERENCE_STRING_MIN + (random_Number_Temp - REFERENCE_STRING_MAX);
+                    }
+                    my_Reference_String[number_Count] = random_Number_Temp;
+                   // if(my_Reference_String[number_Count]> REFERENCE_STRING_MAX)
+                   // cout << setw(3) << setfill(' ') << my_Reference_String[number_Count] << " ";
+                }
+            }
+
+            //for (int i = 0; i < NUMBER_OF_MEMORY_REFERENCE; i++) {
+            //    cout << setw(3) << setfill(' ') << my_Reference_String[i] << " ";
+            //    cout << ((i + 1) % 5 == 0) ? "\r\n" : "";
+            //}
+
+        }
+        else if (mode == my_String) {
+
+        }
+
+
+
         
     }
 
 };
 
+class page_Replacement_algo {
+
+};
 
 int main()
 {
     my_Reference_Data myReferenceData;
 
-    myReferenceData.set_Reference_String();
+    myReferenceData.set_Reference_String(locality_String);//random_String , locality_String , my_String
 
     
-    for (int i = 0; i < NUMBER_OF_MEMORY_REFERENCE; i++) {
-        cout<< setw(3)<<setfill(' ')<<myReferenceData.get_Reference_String(i)<< " ";
-        if(((i+1) % NUMBER_OF_BLOCK == 0 ))
-            cout <<"\r\n";
-    }
+
     //cout << "Hello World!\n"<<str;
     return 0;
 }
