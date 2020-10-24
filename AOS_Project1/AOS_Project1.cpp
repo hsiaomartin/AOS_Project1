@@ -19,7 +19,7 @@ Specification:
 #define REFERENCE_RANGE_MAX 25 //
 #define REFERENCE_RANGE_MIN 15
 #define NUMBER_OF_MEMORY_REFERENCE 200000 //how many number we need
-
+#define NUMBER_OF_FRAMES 20
 
 
 #define NUMBER_OF_BLOCKS 100 //how many block in reference
@@ -29,23 +29,27 @@ Specification:
 #include <string>
 #include<algorithm>
 using namespace std;
-enum {random_String,locality_String,my_String};
+enum reference_Data_Type {random_String,locality_String,my_String};
+enum page_Replacement_Algorithms {FIFO ,ARB ,Enhanced_Second_Chance};
+
+int my_Reference_String[NUMBER_OF_MEMORY_REFERENCE];
+
 class my_Reference_Data {
 private:
-    short my_Reference_String[NUMBER_OF_MEMORY_REFERENCE];
+
 
 public:
     my_Reference_Data(){
         //fill 0
         fill(my_Reference_String, my_Reference_String + NUMBER_OF_MEMORY_REFERENCE, 0); 
     }
-    int get_Reference_String(int get_num) {
-        return my_Reference_String[get_num];
-    }
-    void print_Refernece_String(int get_num) {
-        cout << setw(3) << setfill(' ') << get_Reference_String(get_num) << " ";
+    //int get_Reference_String() {
+    //    return my_Reference_String;
+    //}
+    //void print_Refernece_String(int get_num) {
+    //    cout << setw(3) << setfill(' ') << get_Reference_String() << " ";
 
-    }
+    //}
     void set_Reference_String(short mode) {
         //  (1) Random: Arbitrarily pick [1,25] continuous numbers for each reference. 
         if (mode == random_String) { 
@@ -106,16 +110,57 @@ public:
 
 };
 
-class page_Replacement_algo {
+class page_Replacement_Algo {
+private:
+    bool reference_Bit[NUMBER_OF_FRAMES];
+    int interrupt_Time;
+    int page_Fault_Time;
+    int my_Page[NUMBER_OF_FRAMES]={0};
+public:
+    page_Replacement_Algo() {
+        interrupt_Time = 0;
+        page_Fault_Time = 0;
+    }
+    void set_Replacement_Algo(int mode,int reference_String[]) {
+        if (mode == FIFO) {
+            int my_Pointer = 0;
+            bool my_Check = false;
+            for (int reference_Count = 0; reference_Count < NUMBER_OF_MEMORY_REFERENCE; reference_Count++) {
+                my_Check = false;
+                if (reference_Count < NUMBER_OF_FRAMES ) {
+                    my_Page[reference_Count] = reference_String[reference_Count];
+                    page_Fault_Time++;
+                    (my_Pointer < NUMBER_OF_FRAMES) ? my_Pointer++ : my_Pointer = 0;
+                    
+                }
+                else {
+                    for (int check_Count = 0; check_Count < NUMBER_OF_BLOCKS; check_Count++) {
+                        if (my_Page[check_Count] == reference_String[reference_Count]) { 
+                            my_Check = true;
+                            break; 
+                        }
+                    }
+                    if (my_Check == false) {
+                        my_Pointer  = my_Pointer % NUMBER_OF_FRAMES;
+                        my_Page[my_Pointer] = reference_String[reference_Count];
+                        page_Fault_Time++;
+                        my_Pointer++;
+                    }
+                }
+                //cout << "Pointer :->" << my_Pointer << " page fault :" << page_Fault_Time << endl;
+            }
+            cout << page_Fault_Time;
+        }
 
+    }
 };
 
 int main()
 {
     my_Reference_Data myReferenceData;
-
+    page_Replacement_Algo pageReplacementAlgo;
     myReferenceData.set_Reference_String(locality_String);//random_String , locality_String , my_String
-
+    pageReplacementAlgo.set_Replacement_Algo(FIFO, my_Reference_String);
     
 
     //cout << "Hello World!\n"<<str;
@@ -132,7 +177,3 @@ int main()
 //   4. 使用 [錯誤清單] 視窗，檢視錯誤
 //   5. 前往 [專案] > [新增項目]，建立新的程式碼檔案，或是前往 [專案] > [新增現有項目]，將現有程式碼檔案新增至專案
 //   6. 之後要再次開啟此專案時，請前往 [檔案] > [開啟] > [專案]，然後選取 .sln 檔案
-
-
-
-// 1 2 4 8 16 32 64
