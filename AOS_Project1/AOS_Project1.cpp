@@ -18,19 +18,19 @@ Specification:
 #define REFERENCE_STRING_MIN 1
 #define REFERENCE_RANGE_MAX 25 //
 #define REFERENCE_RANGE_MIN 15
-#define NUMBER_OF_MEMORY_REFERENCE 200000 //how many number we need
-#define NUMBER_OF_FRAMES 20
+#define NUMBER_OF_MEMORY_REFERENCE 200000 //how many number we need :200000
+#define NUMBER_OF_FRAMES 100 //how many number in a frame :20
 
 
-#define NUMBER_OF_BLOCKS 100 //how many block in reference
-
+#define NUMBER_OF_BLOCKS 1 //how many block in reference :100
+#include <bitset>
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include<algorithm>
 using namespace std;
 enum reference_Data_Type {random_String,locality_String,my_String};
-enum page_Replacement_Algorithms {FIFO ,ARB ,Enhanced_Second_Chance};
+enum page_Replacement_Algorithms {FIFO ,ARB ,Enhanced_Second_Chance,my_Method};
 
 int my_Reference_String[NUMBER_OF_MEMORY_REFERENCE];
 
@@ -89,10 +89,12 @@ public:
                     }
                     my_Reference_String[number_Count] = random_Number_Temp;
                    // if(my_Reference_String[number_Count]> REFERENCE_STRING_MAX)
+//-----------------------------------------------------------
                    // cout << setw(3) << setfill(' ') << my_Reference_String[number_Count] << " ";
+ //-----------------------------------------------------------
                 }
             }
-
+ //           cout << endl;
             //for (int i = 0; i < NUMBER_OF_MEMORY_REFERENCE; i++) {
             //    cout << setw(3) << setfill(' ') << my_Reference_String[i] << " ";
             //    cout << ((i + 1) % 5 == 0) ? "\r\n" : "";
@@ -112,16 +114,22 @@ public:
 
 class page_Replacement_Algo {
 private:
-    bool reference_Bit[NUMBER_OF_FRAMES];
+    short reference_Bit[NUMBER_OF_FRAMES];
     int interrupt_Time;
     int page_Fault_Time;
     int my_Page[NUMBER_OF_FRAMES]={0};
+    int priority[NUMBER_OF_FRAMES] = { 0 };
 public:
     page_Replacement_Algo() {
         interrupt_Time = 0;
         page_Fault_Time = 0;
+        for (int count = 0; count < NUMBER_OF_FRAMES; count++) {
+            reference_Bit[count] = 0;
+        }
     }
+
     void set_Replacement_Algo(int mode,int reference_String[]) {
+        //(1) FIFO algorithm
         if (mode == FIFO) {
             int my_Pointer = 0;
             bool my_Check = false;
@@ -134,7 +142,7 @@ public:
                     
                 }
                 else {
-                    for (int check_Count = 0; check_Count < NUMBER_OF_BLOCKS; check_Count++) {
+                    for (int check_Count = 0; check_Count < NUMBER_OF_FRAMES; check_Count++) {
                         if (my_Page[check_Count] == reference_String[reference_Count]) { 
                             my_Check = true;
                             break; 
@@ -151,16 +159,153 @@ public:
             }
             cout << page_Fault_Time;
         }
+        //(2) ARB algorithm (8-bit information) 
+        else if (mode == ARB) {
+            int my_Pointer = 0;
+            for (int reference_Count = 0; reference_Count < NUMBER_OF_MEMORY_REFERENCE; reference_Count++) {
+//-----------------------------------------------------------------
+  /*              for (int update_Count = 0; update_Count < NUMBER_OF_FRAMES; update_Count++) {
+                    cout << my_Page[update_Count] << " ";
+                }
+                cout << endl;
+
+                cout << "In :" << reference_String[reference_Count]  << endl;*/
+
+
+//-----------------------------------------------------------------
+
+                if (reference_Count < NUMBER_OF_FRAMES) {
+                    my_Page[reference_Count] = reference_String[reference_Count];
+                    page_Fault_Time++;
+                    reference_Bit[my_Pointer] =( (reference_Bit[my_Pointer] >> 1) | 128) & 255;  //  0000_0000  |  1000_0000
+                    priority[my_Pointer] = my_Pointer;
+                    (my_Pointer < NUMBER_OF_FRAMES) ? my_Pointer++ : my_Pointer = 0;
+                    
+                }
+                else {
+                    int hit_Reference = -1;
+                    // find number exist
+                    for (int check_Count = 0; check_Count < NUMBER_OF_FRAMES; check_Count++) {
+                        if (my_Page[check_Count] == reference_String[reference_Count]) {
+                            hit_Reference = check_Count;
+//-----------------------------------------------------------------
+                            //cout << "hit :" << my_Page[check_Count] << endl;
+//-----------------------------------------------------------------
+                            break;
+                        }                       
+                    }
+                    //if hit number ,shift reference bit 
+                    if (hit_Reference > -1) {
+                        for (int update_Count = 0; update_Count < NUMBER_OF_FRAMES; update_Count++) {
+                            //update reference_Bit
+                            if (update_Count == hit_Reference) {
+                                reference_Bit[update_Count] = ((reference_Bit[update_Count] >> 1) | 128) & 255;   // ( 0000_0000  |  1000_0000 ) & 1111_1111
+                            }
+                            else {
+                                reference_Bit[update_Count] =((reference_Bit[update_Count] >> 1) & 127) & 255;   // ( 0000_0000  &  0111_1111) & 1111_1111
+                            }
+                            //update all priority 
+                            priority[update_Count] -= 1;
+                        }
+                        //update priority 
+                        priority[hit_Reference] = NUMBER_OF_FRAMES - 1;
+                    }
+                    // doesn't hit number ,find which number is victim
+                    else {
+                        //replace victim by new number
+                        int victim_Value = 256;
+                        int victim = -1; //find out which number least use
+                        int check_Redundant[256] = { 0 };//find redundant of smailest number
+                        //if find out the least number then record the number
+                        for (int check_Reference_Bit = 0; check_Reference_Bit < NUMBER_OF_FRAMES; check_Reference_Bit++) {
+                            check_Redundant[reference_Bit[check_Reference_Bit]] += 1;//record how many redundant of  reference bit
+                            //find out the least use number
+                            if (victim_Value > reference_Bit[check_Reference_Bit]) {
+                                victim_Value = reference_Bit[check_Reference_Bit];
+                                victim = check_Reference_Bit;
+                            }                         
+                        }
+                       // cout << "victim : " << victim << endl;
+                       // for(int i =0 ; i< NUMBER_OF_FRAMES ;i++)
+                           // cout << "redundant ! :" << i << " , Times : " << check_Redundant[i] << endl;
+                        //if find out smailest number has redundant ,check priority and determinate which one is real victim
+                        if (check_Redundant[reference_Bit[victim]] > 1) {
+                        //    cout << "redundant ! :"<< victim <<" , Times : "<< check_Redundant[reference_Bit[victim]] << endl;
+                            int temp_Priority = NUMBER_OF_FRAMES;
+                            //check all of same reference bit victim's priority in frame 
+                            for (int check_Priority = 0; check_Priority < NUMBER_OF_FRAMES; check_Priority++) {
+                                if (reference_Bit[check_Priority] == victim_Value) {
+                                    if (temp_Priority > priority[check_Priority]) {
+                                        temp_Priority = priority[check_Priority];
+                                        victim = check_Priority;
+                                    }
+                                }
+                            }
+                            //replace the lowest victim by new number
+                            my_Page[victim] = reference_String[reference_Count];
+                        }
+                        //replace victim by new number
+                        else {
+                            my_Page[victim] = reference_String[reference_Count];
+                        }                
+                        //update reference_Bit
+                        for (int update_Count = 0; update_Count < NUMBER_OF_FRAMES; update_Count++) {
+                            if (update_Count == victim) {
+                                reference_Bit[update_Count] = 0;
+                                reference_Bit[update_Count] = ((reference_Bit[update_Count] ) | 128) & 255;   // ( 0000_0000  |  1000_0000 ) & 1111_1111
+                            }
+                            else {
+                                reference_Bit[update_Count] = ((reference_Bit[update_Count] >> 1) & 127) & 255;   // ( 0000_0000  &  0111_1111) & 1111_1111
+                            }
+                            //update all priority 
+                            priority[update_Count] -= 1;
+                        }
+                        //update priority 
+                        priority[victim] = NUMBER_OF_FRAMES - 1;
+
+
+
+
+                        page_Fault_Time++;
+                    }
+                }
+ //-----------------------------------------------------------------
+                //for (int update_Count = 0; update_Count < NUMBER_OF_FRAMES; update_Count++) {
+                //    cout << my_Page[update_Count] << " ";
+                //}
+                //cout << endl;
+                //for (int update_Count = 0; update_Count < NUMBER_OF_FRAMES; update_Count++) {
+                //    cout << "priority : " << priority[update_Count] << " , reference bit" << update_Count << " : " << /*std::bitset<8>*/(reference_Bit[update_Count]) << endl;
+                //}
+                //cout << " page fault :" << page_Fault_Time;
+                //
+                //cout << endl;
+            }
+            cout << page_Fault_Time;
+//-----------------------------------------------------------------
+        }
+        //(3) Enhanced second-chance algorithm 
+        else if (mode == Enhanced_Second_Chance) {
+
+        }
+        else if (mode == my_Method) {
+
+        }
 
     }
 };
 
 int main()
 {
+    cout << "Reference string : ( " << REFERENCE_STRING_MIN << " ~ " << REFERENCE_STRING_MAX << " )\r\n";
+    cout << "Number of memory reference :  " << NUMBER_OF_MEMORY_REFERENCE << endl;
+    cout << "Number of frames in the physical memory :  " << NUMBER_OF_FRAMES << endl;
+    cout << "Test reference string :  " << "random_String" << endl;
+    cout << "Algorithm :  " << "ARB" << endl;
     my_Reference_Data myReferenceData;
     page_Replacement_Algo pageReplacementAlgo;
-    myReferenceData.set_Reference_String(locality_String);//random_String , locality_String , my_String
-    pageReplacementAlgo.set_Replacement_Algo(FIFO, my_Reference_String);
+    myReferenceData.set_Reference_String(random_String);//random_String , locality_String , my_String
+    pageReplacementAlgo.set_Replacement_Algo(ARB, my_Reference_String);//FIFO ,ARB ,Enhanced_Second_Chance,my_Method
     
 
     //cout << "Hello World!\n"<<str;
