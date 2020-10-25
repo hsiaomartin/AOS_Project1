@@ -115,9 +115,11 @@ public:
 class page_Replacement_Algo {
 private:
     short reference_Bit[NUMBER_OF_FRAMES];
+    short dirty_Bit[NUMBER_OF_FRAMES];
+    short reference_Dirty_Bit[NUMBER_OF_FRAMES] = { 0 };
     int interrupt_Time;
     int page_Fault_Time;
-    int my_Page[NUMBER_OF_FRAMES]={0};
+    int  my_Page[NUMBER_OF_FRAMES] = { 0 };
     int priority[NUMBER_OF_FRAMES] = { 0 };
 public:
     page_Replacement_Algo() {
@@ -125,6 +127,7 @@ public:
         page_Fault_Time = 0;
         for (int count = 0; count < NUMBER_OF_FRAMES; count++) {
             reference_Bit[count] = 0;
+            dirty_Bit[count] = 0;
         }
     }
 
@@ -157,7 +160,7 @@ public:
                 }
                 //cout << "Pointer :->" << my_Pointer << " page fault :" << page_Fault_Time << endl;
             }
-            cout << page_Fault_Time;
+
         }
         //(2) ARB algorithm (8-bit information) 
         else if (mode == ARB) {
@@ -281,31 +284,101 @@ public:
                 //
                 //cout << endl;
             }
-            cout << page_Fault_Time;
+
 //-----------------------------------------------------------------
         }
         //(3) Enhanced second-chance algorithm 
         else if (mode == Enhanced_Second_Chance) {
+            int my_Pointer = 0;
+            bool my_Check = false;
+            for (int reference_Count = 0; reference_Count < NUMBER_OF_MEMORY_REFERENCE; reference_Count++) {
+                my_Check = false;
+                if (reference_Count < NUMBER_OF_FRAMES) {
+                    my_Page[reference_Count] = reference_String[reference_Count];
+                    page_Fault_Time++;
+                    (my_Pointer < NUMBER_OF_FRAMES) ? my_Pointer++ : my_Pointer = 0;
+                    reference_Dirty_Bit[my_Pointer] |= 1;
+                }
+                else {
+                    for (int check_Count = 0; check_Count < NUMBER_OF_FRAMES; check_Count++) {
+                        if (my_Page[check_Count] == reference_String[reference_Count]) {
+                            my_Check = true;
+                            reference_Dirty_Bit[check_Count] |= 2;
+                            break;
+                        }
+                    }
+                    if (my_Check == false) {
+                        //int record_Times[4] = { 0 };
+                        //for (int check_Times = 0; check_Times < NUMBER_OF_FRAMES; check_Times++) {
+                        //    record_Times[reference_Dirty_Bit[check_Times]] ++;                           
+                        //}
+                        bool is_Victim = false;
+                        int temp_Pointer = my_Pointer;
+                        while (!is_Victim) {
+                            //find (0,0) 
+                            for (int check_Reg = 0; check_Reg < NUMBER_OF_FRAMES; check_Reg++) {
+                                if (reference_Dirty_Bit[temp_Pointer] == 0) {
+                                    my_Pointer = temp_Pointer;
+                                    reference_Dirty_Bit[temp_Pointer] = 1;
+                                    is_Victim = true;
+                                    break;
+                                }
+                                temp_Pointer = temp_Pointer % NUMBER_OF_FRAMES;
+                                temp_Pointer++;                                
+                            }
+                            if (is_Victim)break;
+                            //find (0,1)
+                            temp_Pointer = my_Pointer;
+                            for (int check_Reg = 0; check_Reg < NUMBER_OF_FRAMES; check_Reg++) {
+                                if (reference_Dirty_Bit[temp_Pointer] == 1) {
+                                    my_Pointer = temp_Pointer;
+                                    reference_Dirty_Bit[temp_Pointer] = 0;
+                                    is_Victim = true;
+                                    break;
+                                }
+                                temp_Pointer = temp_Pointer % NUMBER_OF_FRAMES;
+                                temp_Pointer++;
+                            }
+                            if (is_Victim)break;
+                            for (int clean_Reference_Bit = 0; clean_Reference_Bit < NUMBER_OF_FRAMES; clean_Reference_Bit++) {
+                                reference_Dirty_Bit[clean_Reference_Bit] &= 1;
+                            }
+                        }
+                    
+
+                        
+                        my_Pointer = my_Pointer % NUMBER_OF_FRAMES;
+                        
+                        my_Page[my_Pointer] = reference_String[reference_Count];
+                        page_Fault_Time++;
+                        my_Pointer++;
+                    }
+                }
+                //cout << "Pointer :->" << my_Pointer << " page fault :" << page_Fault_Time << endl;
+            }
 
         }
         else if (mode == my_Method) {
 
         }
-
+        cout << page_Fault_Time;
     }
 };
 
 int main()
 {
-    cout << "Reference string : ( " << REFERENCE_STRING_MIN << " ~ " << REFERENCE_STRING_MAX << " )\r\n";
+ /*   cout << "Reference string : ( " << REFERENCE_STRING_MIN << " ~ " << REFERENCE_STRING_MAX << " )\r\n";
     cout << "Number of memory reference :  " << NUMBER_OF_MEMORY_REFERENCE << endl;
     cout << "Number of frames in the physical memory :  " << NUMBER_OF_FRAMES << endl;
-    cout << "Test reference string :  " << "random_String" << endl;
-    cout << "Algorithm :  " << "ARB" << endl;
+    cout << "Test reference string :  " << "locality_String" << endl;
+    cout << "Algorithm :  " << "Enhanced_Second_Chance" << endl;*/
     my_Reference_Data myReferenceData;
     page_Replacement_Algo pageReplacementAlgo;
-    myReferenceData.set_Reference_String(random_String);//random_String , locality_String , my_String
-    pageReplacementAlgo.set_Replacement_Algo(ARB, my_Reference_String);//FIFO ,ARB ,Enhanced_Second_Chance,my_Method
+    int select_mode, select_String;
+    cout << "Input Algorithm and reference string :" << endl;
+    cin >> select_mode >> select_String;
+    myReferenceData.set_Reference_String(select_String);//random_String , locality_String , my_String
+    pageReplacementAlgo.set_Replacement_Algo(select_mode, my_Reference_String);//FIFO ,ARB ,Enhanced_Second_Chance,my_Method
     
 
     //cout << "Hello World!\n"<<str;
