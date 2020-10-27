@@ -28,6 +28,8 @@ Specification:
 #include <iomanip>
 #include <string>
 #include<algorithm>
+#include<time.h>
+#include<fstream>
 using namespace std;
 enum reference_Data_Type {random_String,locality_String,my_String};
 enum page_Replacement_Algorithms {FIFO ,ARB ,Enhanced_Second_Chance,my_Method};
@@ -118,7 +120,7 @@ private:
     bool ESC_reference_Bit[NUMBER_OF_FRAMES];
     bool dirty_Bit[NUMBER_OF_FRAMES];
 
-    unsigned int interrupt_Time;
+    unsigned int interrupt_Time=0;
     int page_Fault_Time;
     int disk_Write;
     int  my_Page[NUMBER_OF_FRAMES] = { 0 };
@@ -149,34 +151,39 @@ public:
                     page_Fault_Time++;
                     interrupt_Time++;
                     (my_Pointer < NUMBER_OF_FRAMES) ? my_Pointer++ : my_Pointer = 0;
-                    dirty_Bit[reference_Count] = true;
+                    //dirty_Bit[reference_Count] = true;
                 }
                 else {
                     for (int check_Count = 0; check_Count < NUMBER_OF_FRAMES; check_Count++) {
                         if (my_Page[check_Count] == reference_String[reference_Count]) { 
                             interrupt_Time++;
-                            dirty_Bit[check_Count] = false;
+                            //dirty_Bit[check_Count] = false;
                             my_Check = true;
                             my_Pointer = (my_Pointer++) % NUMBER_OF_FRAMES;
-                            break; 
+                           // break; 
                         }
                     }
+                    //reference string not found ,find victim to replace
                     if (my_Check == false) {
-                        if(dirty_Bit[my_Pointer])
-                            disk_Write++;
+                        //request OS to check
+                        interrupt_Time++;    
 
-                       // interrupt_Time++;
-                        
+                        //page modified since it was swap in
+                        dirty_Bit[my_Pointer] = true;
+                        //write to disk
+                        disk_Write++;
+                        //reset dirty bit
+                        dirty_Bit[my_Pointer] = false;
 
-
-                        my_Pointer  = my_Pointer % NUMBER_OF_FRAMES;
                         my_Page[my_Pointer] = reference_String[reference_Count];
                         page_Fault_Time++;
-                        my_Pointer++;
-                        //dirty_Bit[my_Pointer] = true;
+                        my_Pointer = (my_Pointer++) % NUMBER_OF_FRAMES;
+
                     }
+
+                        //cout << "interrupt_Time :->" << &interrupt_Time <<"  "<< interrupt_Time << endl;
                 }
-                //cout << "Pointer :->" << my_Pointer << " page fault :" << page_Fault_Time << endl;
+                //cout << "interrupt_Time :->" << interrupt_Time << " page fault :" << page_Fault_Time << endl;
             }
 
         }
@@ -189,7 +196,7 @@ public:
                     page_Fault_Time++;
                     reference_Bit[my_Pointer] =( (reference_Bit[my_Pointer] >> 1) | 128) & 255;  //  0000_0000  |  1000_0000
                     priority[my_Pointer] = my_Pointer;
-                    dirty_Bit[my_Pointer] = true;
+                    //dirty_Bit[my_Pointer] = true;
                     (my_Pointer < NUMBER_OF_FRAMES) ? my_Pointer++ : my_Pointer = 0;
 
                     interrupt_Time++;
@@ -252,9 +259,11 @@ public:
                                 }
                             }
                         }
+                        dirty_Bit[victim] = true;
                         //victim frame is dirty
                         if (dirty_Bit[victim])
                             disk_Write++;
+                        dirty_Bit[victim] = false;
                         interrupt_Time++;
                         //replace victim by new number
                         my_Page[victim] = reference_String[reference_Count];
@@ -297,7 +306,7 @@ public:
                     page_Fault_Time++;
                     interrupt_Time++;
                     (my_Pointer < NUMBER_OF_FRAMES) ? my_Pointer++ : my_Pointer = 0;
-                    dirty_Bit[reference_Count] = true;
+                    //dirty_Bit[reference_Count] = true;
                 }
                 else {
                     for (int check_Count = 0; check_Count < NUMBER_OF_FRAMES; check_Count++) {
@@ -329,7 +338,7 @@ public:
                             for (int check = 0; check < NUMBER_OF_FRAMES; check++) {
                                 if (ESC_reference_Bit[my_Pointer] == 0 && dirty_Bit[my_Pointer] == 1) {
                                     is_Victim = true;
-                                    disk_Write++;
+                                    //disk_Write++;
                                     break;
                                 }
                                 my_Pointer = (my_Pointer++) % NUMBER_OF_FRAMES;
@@ -351,90 +360,156 @@ public:
 
         }
         else if (mode == my_Method) {
+            int my_Pointer = 0;
+            bool my_Check = false;
+            //put reference string to frame
+            for (int reference_Count = 0; reference_Count < NUMBER_OF_MEMORY_REFERENCE; reference_Count++) {
+                my_Check = false;
+                //fill reference string to frame
+                if (reference_Count < NUMBER_OF_FRAMES) {
+                    my_Page[reference_Count] = reference_String[reference_Count];
+                    page_Fault_Time++;
+                    interrupt_Time++;
+                    (my_Pointer < NUMBER_OF_FRAMES) ? my_Pointer++ : my_Pointer = 0;
+                    dirty_Bit[reference_Count] = true;
+                }
+                else {
+                    for (int check_Count = 0; check_Count < NUMBER_OF_FRAMES; check_Count++) {
+                        if (my_Page[check_Count] == reference_String[reference_Count]) {
+                            interrupt_Time++;
+                            dirty_Bit[check_Count] = false;
+                            my_Check = true;
+                            my_Pointer = (my_Pointer++) % NUMBER_OF_FRAMES;
+                            //break;
+                        }
+                    }
+                    if (my_Check == false) {
+                        if (dirty_Bit[my_Pointer])
+                            disk_Write++;
+
+                         interrupt_Time++;
+
+
+
+                        my_Pointer = my_Pointer % NUMBER_OF_FRAMES;
+                        my_Page[my_Pointer] = reference_String[reference_Count];
+                        page_Fault_Time++;
+                        my_Pointer++;
+                        //dirty_Bit[my_Pointer] = true;
+                    }
+                }
+                //cout << "Pointer :->" << my_Pointer << " page fault :" << page_Fault_Time << endl;
+            }
 
         }
+
         cout << "Page fault     : " << page_Fault_Time << endl;
         cout << "Interrupt time : " << interrupt_Time << endl;
         cout << "Disk write     : " << disk_Write << endl;
         cout << "Cost           : " << (disk_Write + interrupt_Time) << endl;
     }
+
+    int get_Page_Fault_Time() {
+        return page_Fault_Time;
+    }
+    int get_Interrupt_Time() {
+        return interrupt_Time;
+    }
+    int get_Disk_Write() {
+        return disk_Write;
+    }
+    int get_Cost() {
+        return (disk_Write + interrupt_Time);
+    }
 };
 
 int main()
 {
-    cout << "Reference string : ( " << REFERENCE_STRING_MIN << " ~ " << REFERENCE_STRING_MAX << " )\r\n";
-    cout << "Number of memory reference :  " << NUMBER_OF_MEMORY_REFERENCE << endl;
-    cout << "Number of frames in the physical memory :  " << NUMBER_OF_FRAMES << endl;
+   // srand(time(NULL));
+    fstream file;
+    file.open("report_Output.csv", ios::out);
+    char open = 'y';
+    while (open == 'y') {
+        cout << "Reference string : ( " << REFERENCE_STRING_MIN << " ~ " << REFERENCE_STRING_MAX << " )\r\n";
+        cout << "Number of memory reference :  " << NUMBER_OF_MEMORY_REFERENCE << endl;
+        cout << "Number of frames in the physical memory :  " << NUMBER_OF_FRAMES << endl;
 
-    my_Reference_Data myReferenceData;
-    page_Replacement_Algo pageReplacementAlgo;
-    int select_mode, select_String,select_Algo;
-    cout << "1.(ramdom string & FIFO)\r\n2.(ramdom string & ARB)\r\n3.(ramdom string & ESC)\r\n4.(ramdom string & my method) isn't ok\r\n" ;
-    cout << "5.(locality string & FIFO)\r\n6.(locality string & ARB)\r\n7.(locality string & ESC)\r\n8.(locality string & my method) isn't ok\r\n" ;
-    cout << "not OK all   \r\n9.(my string & FIFO)\r\n10.(my string & ARB)\r\n11.(my string & ESC)\r\n12.(my string & my method)\r\n";
-    cout << "Select mode :\r\n";
-    cin >> select_mode;
-    switch (select_mode)
-    {
-    case 1:
-        select_String = random_String;
-        select_Algo = FIFO;
-        break;
-    case 2:
-        select_String = random_String;
-        select_Algo = ARB;
-        break;
-    case 3:
-        select_String = random_String;
-        select_Algo = Enhanced_Second_Chance;
-        break;
-    case 4:
-        select_String = random_String;
-        select_Algo = my_Method;
-        break;
-    case 5:
-        select_String = locality_String;
-        select_Algo = FIFO;
-        break;
-    case 6:
-        select_String = locality_String;
-        select_Algo = ARB;
-        break;
-    case 7:
-        select_String = locality_String;
-        select_Algo = Enhanced_Second_Chance;
-        break;
-    case 8:
-        select_String = locality_String;
-        select_Algo = my_Method;
-        break;
-    case 9:
-        select_String = my_String;
-        select_Algo = FIFO;
-        break;
-    case 10:
-        select_String = my_String;
-        select_Algo = ARB;
-        break;
-    case 11:
-        select_String = my_String;
-        select_Algo = Enhanced_Second_Chance;
-        break;
-    case 12:
-        select_String = my_String;
-        select_Algo = my_Method;
-        break;
-    default:
-        cout << "error input ,set default 1.(ramdom string & FIFO)";
-        select_String = random_String;
-        select_Algo = FIFO;
-        break;
-    } 
+        my_Reference_Data myReferenceData;
+        page_Replacement_Algo pageReplacementAlgo;
+        int select_mode, select_String,select_Algo;
+        cout << "1.(ramdom string & FIFO)      2.(ramdom string & ARB)      3.(ramdom string & ESC)      4.(ramdom string & my method)\r\n" ;
+        cout << "5.(locality string & FIFO)    6.(locality string & ARB)    7.(locality string & ESC)    8.(locality string & my method)\r\n" ;
+        cout << "9.(my string & FIFO)         10.(my string & ARB)         11.(my string & ESC)         12.(my string & my method)\r\n";
+        cout << "Select mode :\r\n";
+        cin >> select_mode;
+        switch (select_mode)
+        {
+        case 1:
+            select_String = random_String;
+            select_Algo = FIFO;
+            break;
+        case 2:
+            select_String = random_String;
+            select_Algo = ARB;
+            break;
+        case 3:
+            select_String = random_String;
+            select_Algo = Enhanced_Second_Chance;
+            break;
+        case 4:
+            select_String = random_String;
+            select_Algo = my_Method;
+            break;
+        case 5:
+            select_String = locality_String;
+            select_Algo = FIFO;
+            break;
+        case 6:
+            select_String = locality_String;
+            select_Algo = ARB;
+            break;
+        case 7:
+            select_String = locality_String;
+            select_Algo = Enhanced_Second_Chance;
+            break;
+        case 8:
+            select_String = locality_String;
+            select_Algo = my_Method;
+            break;
+        case 9:
+            select_String = my_String;
+            select_Algo = FIFO;
+            break;
+        case 10:
+            select_String = my_String;
+            select_Algo = ARB;
+            break;
+        case 11:
+            select_String = my_String;
+            select_Algo = Enhanced_Second_Chance;
+            break;
+        case 12:
+            select_String = my_String;
+            select_Algo = my_Method;
+            break;
+        default:
+            cout << "error input ,set default 1.(ramdom string & FIFO)";
+            select_String = random_String;
+            select_Algo = FIFO;
+            break;
+        } 
 
 
-    myReferenceData.set_Reference_String(select_String);//random_String , locality_String , my_String
-    pageReplacementAlgo.set_Replacement_Algo(select_Algo, my_Reference_String);//FIFO ,ARB ,Enhanced_Second_Chance,my_Method
-    
+        myReferenceData.set_Reference_String(select_String);//random_String , locality_String , my_String
+        pageReplacementAlgo.set_Replacement_Algo(select_Algo, my_Reference_String);//FIFO ,ARB ,Enhanced_Second_Chance,my_Method
+        file <<"\r\npage fault : "<< pageReplacementAlgo.get_Page_Fault_Time()<<"\r\nInterrupt : "<<pageReplacementAlgo.get_Interrupt_Time()<<"\r\nDisk write : "<<pageReplacementAlgo.get_Disk_Write();
+        file << "\r\nCost : " << pageReplacementAlgo.get_Cost()<<endl;
+        cout << "continue ? (y/n) " << endl;
+        cin >> open;
+
+    }
+
+    file.close();
 
     //cout << "Hello World!\n"<<str;
     return 0;
